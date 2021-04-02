@@ -73,7 +73,7 @@ class MyIncumbentUpdater(mip.IncumbentUpdater):
         self.namespace = namespace
         self.restored_namespaces = []
 
-    def update_incumbent(self, objective_value, solution):
+    def update_incumbent(self, objective_value, solution) -> None:
         print(f"incumbent callback")
         # print(objective_value)
         # print(solution)
