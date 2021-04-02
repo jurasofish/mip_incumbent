@@ -62,6 +62,13 @@ def plot_sol(sol, f_locs, c_locs, title=None):
         plt.title(title)
 
 
+class MyIncumbentUpdater(mip.IncumbentUpdater):
+    def update_incumbent(self, objective_value, solution):
+        print(f"incumbent callback")
+        print(objective_value)
+        print(solution)
+
+
 def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
 
     nfac, ncus = dists.shape
@@ -92,6 +99,8 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
     total_fac_cost = mip.xsum(enabled[fac] * f_costs[fac] for fac in range(nfac))
 
     m.objective = mip.minimize(total_dist + total_fac_cost)
+
+    m.incumbent_updater = MyIncumbentUpdater(m)
 
     status = m.optimize(max_seconds=600)
     if status not in (mip.OptimizationStatus.OPTIMAL, mip.OptimizationStatus.FEASIBLE):
