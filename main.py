@@ -3,7 +3,7 @@ from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 from itertools import product
 import mip
-from typing import Dict, List
+from typing import Dict, List, Any
 import restore_vars
 from pathlib import Path
 
@@ -47,18 +47,42 @@ def load_problem(problem_file: str):
     return f_caps, f_costs, c_dems, f_locs, c_locs, dists
 
 
-def plot_sol(sol, f_locs, c_locs):
-    used_f_locs = f_locs[np.unique(sol)]
-    plt.scatter(used_f_locs[:, 0], used_f_locs[:, 1], color="red", s=10)
-    plt.scatter(c_locs[:, 0], c_locs[:, 1], color="black", s=1, alpha=0.5)
-    for cus, fac in enumerate(sol):
-        plt.plot(
-            [f_locs[fac][0], c_locs[cus][0]],
-            [f_locs[fac][1], c_locs[cus][1]],
-            lw=0.1,
-            c="black",
-            alpha=0.25,
-        )
+class SolutionPlotter:
+    def __init__(self, f_locs, c_locs, out):
+        self.f_locs = f_locs
+        self.c_locs = c_locs
+        self.out = out
+        self.i = 1
+
+    def plot(self, ns: Dict[str, Any]):
+        f_locs = self.f_locs
+        c_locs = self.c_locs
+        out = self.out
+
+        ncus = c_locs.shape[0]
+        width, height, dpi = 1920, 1080, 100
+        ass, enabled = np.array(ns["ass"]), np.array(ns["enabled"])
+
+        sol = np.ones(ncus) * np.nan
+        for cus in range(ncus):
+            sol[cus] = np.argmax(ass[:, cus])
+        sol = sol.astype(np.int32)
+
+        plt.figure(figsize=(width / dpi, height / dpi), dpi=dpi)
+        used_f_locs = f_locs[np.unique(sol)]
+        plt.scatter(used_f_locs[:, 0], used_f_locs[:, 1], color="red", s=10)
+        plt.scatter(c_locs[:, 0], c_locs[:, 1], color="black", s=1, alpha=0.5)
+        for cus, fac in enumerate(sol):
+            plt.plot(
+                [f_locs[fac][0], c_locs[cus][0]],
+                [f_locs[fac][1], c_locs[cus][1]],
+                lw=0.1,
+                c="black",
+                alpha=0.25,
+            )
+        plt.savefig(out / f"{self.i}.png")
+        self.i += 1
+        plt.close()
 
 
 class MyIncumbentUpdater(mip.IncumbentUpdater):
@@ -66,11 +90,13 @@ class MyIncumbentUpdater(mip.IncumbentUpdater):
         self,
         m: mip.Model,
         namespace: Dict[str, restore_vars.RestoreMip],
+        plotter: SolutionPlotter,
     ):
         super().__init__(m)
         self.namespace = namespace
         self.restored_namespaces = []
         self.objectives: List[float] = []
+        self.plotter = plotter
 
     def update_incumbent(self, objective_value, solution) -> None:
         print(f"incumbent callback")
@@ -91,8 +117,10 @@ class MyIncumbentUpdater(mip.IncumbentUpdater):
         self.restored_namespaces.append(restored_ns)
         self.objectives.append(objective_value)
 
+        self.plotter.plot(restored_ns)
 
-def solve_mip(f_caps, c_dems, f_costs, dists) -> MyIncumbentUpdater:
+
+def solve_mip(f_caps, c_dems, f_costs, dists, plotter) -> MyIncumbentUpdater:
 
     nfac, ncus = dists.shape
 
@@ -127,7 +155,7 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> MyIncumbentUpdater:
         "ass": restore_vars.Restore2DList(ass),
         "enabled": restore_vars.Restore1DList(enabled),
     }
-    inc_up = MyIncumbentUpdater(m, namespace)
+    inc_up = MyIncumbentUpdater(m, namespace, plotter)
     m.incumbent_updater = inc_up
 
     status = m.optimize(max_seconds=600)
@@ -140,28 +168,12 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> MyIncumbentUpdater:
 
 
 def main():
-    f = "./data/problems/fl_100_12"
+    f = "./data/problems/fl_100_14"
     out = Path("./outputs")
 
     f_caps, f_costs, c_dems, f_locs, c_locs, dists = load_problem(f)
-    inc_up = solve_mip(f_caps, c_dems, f_costs, dists)
-
-    ncus = c_dems.shape[0]
-    dpi = 200
-    width, height = 1920, 1080
-    for i, ns in enumerate(inc_up.restored_namespaces):
-        ass, enabled = np.array(ns["ass"]), np.array(ns["enabled"])
-        plt.figure(figsize=(width / dpi, height / dpi), dpi=dpi)
-
-        sol = np.ones(ncus) * np.nan
-        for cus in range(ncus):
-            sol[cus] = np.argmax(ass[:, cus])
-        sol = sol.astype(np.int32)
-
-        plot_sol(sol, f_locs, c_locs)
-        plt.savefig(out / f"{i}.png")
-        plt.close()
-    # plt.show(block=True)
+    plotter = SolutionPlotter(f_locs, c_locs, out)
+    inc_up = solve_mip(f_caps, c_dems, f_costs, dists, plotter)
 
 
 if __name__ == "__main__":
