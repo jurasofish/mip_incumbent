@@ -3,6 +3,8 @@ from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 from itertools import product
 import mip
+from typing import Dict, Any
+import restore_vars
 
 
 def load_problem(problem_file: str):
@@ -63,10 +65,18 @@ def plot_sol(sol, f_locs, c_locs, title=None):
 
 
 class MyIncumbentUpdater(mip.IncumbentUpdater):
+    def __init__(self, m: mip.Model, namespace: Dict[str, restore_vars.RestoreMip]):
+        super().__init__(m)
+        self.namespace = namespace
+
     def update_incumbent(self, objective_value, solution):
         print(f"incumbent callback")
-        print(objective_value)
-        print(solution)
+        # print(objective_value)
+        # print(solution)
+        ns = self.namespace
+        for k in ns.keys():
+            print(f"k:")
+            print(f"\t{ns[k].restore(solution)}")
 
 
 def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
@@ -100,7 +110,11 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
 
     m.objective = mip.minimize(total_dist + total_fac_cost)
 
-    m.incumbent_updater = MyIncumbentUpdater(m)
+    namespace = {
+        # "ass": ass,
+        "enabled": restore_vars.Restore1DList(enabled),
+    }
+    m.incumbent_updater = MyIncumbentUpdater(m, namespace)
 
     status = m.optimize(max_seconds=600)
     if status not in (mip.OptimizationStatus.OPTIMAL, mip.OptimizationStatus.FEASIBLE):
@@ -121,7 +135,7 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
 
 
 def main():
-    f = "./data/problems/fl_100_12"
+    f = "./data/problems/fl_25_2"
     f_caps, f_costs, c_dems, f_locs, c_locs, dists = load_problem(f)
     sol = solve_mip(f_caps, c_dems, f_costs, dists)
 
