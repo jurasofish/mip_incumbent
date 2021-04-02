@@ -3,7 +3,7 @@ from scipy.spatial.distance import cdist
 import matplotlib.pyplot as plt
 from itertools import product
 import mip
-from typing import Dict, Any
+from typing import Dict, List
 import restore_vars
 from pathlib import Path
 
@@ -72,6 +72,7 @@ class MyIncumbentUpdater(mip.IncumbentUpdater):
         super().__init__(m)
         self.namespace = namespace
         self.restored_namespaces = []
+        self.objectives: List[float] = []
 
     def update_incumbent(self, objective_value, solution) -> None:
         print(f"incumbent callback")
@@ -82,6 +83,7 @@ class MyIncumbentUpdater(mip.IncumbentUpdater):
         for k in ns.keys():
             restored_ns[k] = ns[k].restore(solution)
         self.restored_namespaces.append(restored_ns)
+        self.objectives.append(objective_value)
 
 
 def solve_mip(f_caps, c_dems, f_costs, dists) -> MyIncumbentUpdater:
