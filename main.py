@@ -82,6 +82,14 @@ class MyIncumbentUpdater(mip.IncumbentUpdater):
         restored_ns = {}
         for k in ns.keys():
             restored_ns[k] = ns[k].restore(solution)
+
+        # Only save the data if we don't already have exact copy of it.
+        d = 8
+        if np.around(objective_value, d) in np.around(self.objectives, d):
+            return
+        if any(ns == restored_ns for ns in self.restored_namespaces):
+            return
+
         self.restored_namespaces.append(restored_ns)
         self.objectives.append(objective_value)
 
