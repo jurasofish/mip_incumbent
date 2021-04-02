@@ -1,5 +1,5 @@
 # Python 3.9
-mip==1.13.0  # Really, need custom fork. TODO: update this
+git+git://github.com/jurasofish/python-mip.git@incumbent_progress
 numpy
 scipy
 matplotlib
