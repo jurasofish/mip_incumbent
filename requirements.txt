@@ -3,3 +3,5 @@ mip==1.13.0  # Really, need custom fork. TODO: update this
 numpy
 scipy
 matplotlib
+imageio
+imageio-ffmpeg

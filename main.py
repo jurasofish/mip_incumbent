@@ -6,6 +6,7 @@ import mip
 from typing import Dict, List, Any
 import restore_vars
 from pathlib import Path
+import imageio
 
 
 def load_problem(problem_file: str):
@@ -174,6 +175,12 @@ def main():
     f_caps, f_costs, c_dems, f_locs, c_locs, dists = load_problem(f)
     plotter = SolutionPlotter(f_locs, c_locs, out)
     inc_up = solve_mip(f_caps, c_dems, f_costs, dists, plotter)
+
+    files = list(out.glob("*.png"))
+    files = sorted(files, key=lambda x: int(x.stem))
+    with imageio.get_writer(out / "animation.mp4", fps=1) as w:
+        for f in files:
+            w.append_data(imageio.imread(f))
 
 
 if __name__ == "__main__":
