@@ -47,7 +47,7 @@ def load_problem(problem_file: str):
     return f_caps, f_costs, c_dems, f_locs, c_locs, dists
 
 
-def plot_sol(sol, f_locs, c_locs, title=None):
+def plot_sol(sol, f_locs, c_locs):
     used_f_locs = f_locs[np.unique(sol)]
     plt.scatter(used_f_locs[:, 0], used_f_locs[:, 1], color="red", s=10)
     plt.scatter(c_locs[:, 0], c_locs[:, 1], color="black", s=1, alpha=0.5)
@@ -59,8 +59,6 @@ def plot_sol(sol, f_locs, c_locs, title=None):
             c="black",
             alpha=0.25,
         )
-    if title is not None:
-        plt.title(title)
 
 
 class MyIncumbentUpdater(mip.IncumbentUpdater):
