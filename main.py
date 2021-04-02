@@ -69,13 +69,9 @@ class MyIncumbentUpdater(mip.IncumbentUpdater):
         self,
         m: mip.Model,
         namespace: Dict[str, restore_vars.RestoreMip],
-        f_locs,
-        c_locs,
     ):
         super().__init__(m)
         self.namespace = namespace
-        self.f_locs = f_locs
-        self.c_locs = c_locs
         self.restored_namespaces = []
 
     def update_incumbent(self, objective_value, solution):
@@ -88,20 +84,8 @@ class MyIncumbentUpdater(mip.IncumbentUpdater):
             restored_ns[k] = ns[k].restore(solution)
         self.restored_namespaces.append(restored_ns)
 
-        ass = np.array(restored_ns["ass"])
-        enabled = np.array(restored_ns["enabled"])
 
-        ncus = self.c_locs.shape[0]
-        sol = np.ones(ncus, np.int32) * np.nan
-        for cus in range(ncus):
-            sol[cus] = np.argmax(ass[:, cus])
-
-        sol = sol.astype(np.int32)
-        plot_sol(sol, self.f_locs, self.c_locs)
-        plt.show(block=True)
-
-
-def solve_mip(f_caps, c_dems, f_costs, dists, f_locs, c_locs) -> np.ndarray:
+def solve_mip(f_caps, c_dems, f_costs, dists) -> MyIncumbentUpdater:
 
     nfac, ncus = dists.shape
 
@@ -136,7 +120,8 @@ def solve_mip(f_caps, c_dems, f_costs, dists, f_locs, c_locs) -> np.ndarray:
         "ass": restore_vars.Restore2DList(ass),
         "enabled": restore_vars.Restore1DList(enabled),
     }
-    m.incumbent_updater = MyIncumbentUpdater(m, namespace, f_locs, c_locs)
+    inc_up = MyIncumbentUpdater(m, namespace)
+    m.incumbent_updater = inc_up
 
     status = m.optimize(max_seconds=600)
     if status not in (mip.OptimizationStatus.OPTIMAL, mip.OptimizationStatus.FEASIBLE):
@@ -144,25 +129,19 @@ def solve_mip(f_caps, c_dems, f_costs, dists, f_locs, c_locs) -> np.ndarray:
     else:
         print(f"status: {status}")
 
-    sol_ass = np.array(
-        [[ass[fac][cus].x for cus in range(ncus)] for fac in range(nfac)]
-    )
-
-    sol = np.ones(ncus, np.int32) * np.nan
-    for cus in range(ncus):
-        sol[cus] = np.argmax(sol_ass[:, cus])
-
-    sol = sol.astype(np.int32)
-    return sol
+    return inc_up
 
 
 def main():
-    f = "./data/problems/fl_25_2"
+    f = "./data/problems/fl_100_12"
     f_caps, f_costs, c_dems, f_locs, c_locs, dists = load_problem(f)
-    sol = solve_mip(f_caps, c_dems, f_costs, dists, f_locs, c_locs)
+    inc_up = solve_mip(f_caps, c_dems, f_costs, dists)
 
-    plot_sol(sol, f_locs, c_locs)
-    plt.show(block=True)
+    for ns in inc_up.restored_namespaces:
+        print(ns)
+
+    # plot_sol(sol, f_locs, c_locs)
+    # plt.show(block=True)
 
 
 if __name__ == "__main__":
