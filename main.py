@@ -65,21 +65,43 @@ def plot_sol(sol, f_locs, c_locs, title=None):
 
 
 class MyIncumbentUpdater(mip.IncumbentUpdater):
-    def __init__(self, m: mip.Model, namespace: Dict[str, restore_vars.RestoreMip]):
+    def __init__(
+        self,
+        m: mip.Model,
+        namespace: Dict[str, restore_vars.RestoreMip],
+        f_locs,
+        c_locs,
+    ):
         super().__init__(m)
         self.namespace = namespace
+        self.f_locs = f_locs
+        self.c_locs = c_locs
+        self.restored_namespaces = []
 
     def update_incumbent(self, objective_value, solution):
         print(f"incumbent callback")
         # print(objective_value)
         # print(solution)
         ns = self.namespace
+        restored_ns = {}
         for k in ns.keys():
-            print(f"k:")
-            print(f"\t{ns[k].restore(solution)}")
+            restored_ns[k] = ns[k].restore(solution)
+        self.restored_namespaces.append(restored_ns)
+
+        ass = np.array(restored_ns["ass"])
+        enabled = np.array(restored_ns["enabled"])
+
+        ncus = self.c_locs.shape[0]
+        sol = np.ones(ncus, np.int32) * np.nan
+        for cus in range(ncus):
+            sol[cus] = np.argmax(ass[:, cus])
+
+        sol = sol.astype(np.int32)
+        plot_sol(sol, self.f_locs, self.c_locs)
+        plt.show(block=True)
 
 
-def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
+def solve_mip(f_caps, c_dems, f_costs, dists, f_locs, c_locs) -> np.ndarray:
 
     nfac, ncus = dists.shape
 
@@ -114,7 +136,7 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
         "ass": restore_vars.Restore2DList(ass),
         "enabled": restore_vars.Restore1DList(enabled),
     }
-    m.incumbent_updater = MyIncumbentUpdater(m, namespace)
+    m.incumbent_updater = MyIncumbentUpdater(m, namespace, f_locs, c_locs)
 
     status = m.optimize(max_seconds=600)
     if status not in (mip.OptimizationStatus.OPTIMAL, mip.OptimizationStatus.FEASIBLE):
@@ -137,7 +159,7 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
 def main():
     f = "./data/problems/fl_25_2"
     f_caps, f_costs, c_dems, f_locs, c_locs, dists = load_problem(f)
-    sol = solve_mip(f_caps, c_dems, f_costs, dists)
+    sol = solve_mip(f_caps, c_dems, f_costs, dists, f_locs, c_locs)
 
     plot_sol(sol, f_locs, c_locs)
     plt.show(block=True)
