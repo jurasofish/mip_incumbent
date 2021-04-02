@@ -111,7 +111,7 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
     m.objective = mip.minimize(total_dist + total_fac_cost)
 
     namespace = {
-        # "ass": ass,
+        "ass": restore_vars.Restore2DList(ass),
         "enabled": restore_vars.Restore1DList(enabled),
     }
     m.incumbent_updater = MyIncumbentUpdater(m, namespace)
