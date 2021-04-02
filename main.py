@@ -133,10 +133,10 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> MyIncumbentUpdater:
 
 def main():
     f = "./data/problems/fl_100_12"
+    out = Path("./outputs")
+
     f_caps, f_costs, c_dems, f_locs, c_locs, dists = load_problem(f)
     inc_up = solve_mip(f_caps, c_dems, f_costs, dists)
-
-    out = Path("./outputs")
 
     ncus = c_dems.shape[0]
     dpi = 200
