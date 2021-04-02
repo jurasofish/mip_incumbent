@@ -107,6 +107,7 @@ def solve_mip(f_caps, c_dems, f_costs, dists) -> np.ndarray:
     for cus in range(ncus):
         sol[cus] = np.argmax(sol_ass[:, cus])
 
+    sol = sol.astype(np.int32)
     return sol
 
 
