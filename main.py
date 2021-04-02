@@ -5,6 +5,7 @@ from itertools import product
 import mip
 from typing import Dict, Any
 import restore_vars
+from pathlib import Path
 
 
 def load_problem(problem_file: str):
@@ -47,8 +48,6 @@ def load_problem(problem_file: str):
 
 
 def plot_sol(sol, f_locs, c_locs, title=None):
-    plt.figure()
-
     used_f_locs = f_locs[np.unique(sol)]
     plt.scatter(used_f_locs[:, 0], used_f_locs[:, 1], color="red", s=10)
     plt.scatter(c_locs[:, 0], c_locs[:, 1], color="black", s=1, alpha=0.5)
@@ -137,10 +136,23 @@ def main():
     f_caps, f_costs, c_dems, f_locs, c_locs, dists = load_problem(f)
     inc_up = solve_mip(f_caps, c_dems, f_costs, dists)
 
-    for ns in inc_up.restored_namespaces:
-        print(ns)
+    out = Path("./outputs")
 
-    # plot_sol(sol, f_locs, c_locs)
+    ncus = c_dems.shape[0]
+    dpi = 200
+    width, height = 1920, 1080
+    for i, ns in enumerate(inc_up.restored_namespaces):
+        ass, enabled = np.array(ns["ass"]), np.array(ns["enabled"])
+        plt.figure(figsize=(width / dpi, height / dpi), dpi=dpi)
+
+        sol = np.ones(ncus) * np.nan
+        for cus in range(ncus):
+            sol[cus] = np.argmax(ass[:, cus])
+        sol = sol.astype(np.int32)
+
+        plot_sol(sol, f_locs, c_locs)
+        plt.savefig(out / f"{i}.png")
+        plt.close()
     # plt.show(block=True)
 
 
