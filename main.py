@@ -60,7 +60,7 @@ class SolutionPlotter:
         out = self.out
 
         ncus = c_locs.shape[0]
-        width, height, dpi = 1920, 1080, 100
+        width, height, dpi = 1920 * 2, 1080 * 2, 100
         ass, enabled = np.array(ns["ass"]), np.array(ns["enabled"])
 
         sol = np.ones(ncus) * np.nan
@@ -78,7 +78,7 @@ class SolutionPlotter:
                 [f_locs[fac][1], c_locs[cus][1]],
                 lw=0.1,
                 c="black",
-                alpha=0.25,
+                alpha=0.75,
             )
         plt.savefig(out / f"{self.i}.png")
         self.i += 1
